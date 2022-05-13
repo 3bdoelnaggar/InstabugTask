@@ -7,7 +7,10 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.DividerItemDecoration
 import com.elnaggar.instabugtask.databinding.FragmentMainBinding
+import com.elnaggar.instabugtask.di.MainViewModelFactory
+import com.elnaggar.instabugtask.network.Network
 
 class MainFragment : Fragment() {
 
@@ -33,7 +36,8 @@ class MainFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+        viewModel =
+            ViewModelProvider(this, MainViewModelFactory(Network()))[MainViewModel::class.java]
 
     }
 
@@ -46,6 +50,12 @@ class MainFragment : Fragment() {
         }
         wordCountAdapter = WordsCountAdapter()
         binding.wardsListRecyclerView.adapter = wordCountAdapter
+        binding.wardsListRecyclerView.addItemDecoration(
+            DividerItemDecoration(
+                requireContext(),
+                DividerItemDecoration.VERTICAL
+            )
+        )
 
     }
 

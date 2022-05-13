@@ -1,28 +1,23 @@
 package com.elnaggar.instabugtask.ui.main
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
+import com.elnaggar.instabugtask.network.Network
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 
-
-data class WordCount(val word:String,val count:String)
+data class WordCount(val word: String, val count: String)
 
 sealed interface MainState {
     object Loading : MainState
-    data class Success(val data: List<WordCount>):MainState
-    data class Error(val message:String?=null) : MainState
+    data class Success(val data: List<WordCount>) : MainState
+    data class Error(val message: String? = null) : MainState
 }
 
 
-class MainViewModel : ViewModel() {
-
-
+class MainViewModel(private val network: Network) : ViewModel() {
     private val _stateLiveData = MutableLiveData<MainState>()
     val stateLiveData: LiveData<MainState> = _stateLiveData
 
@@ -30,33 +25,31 @@ class MainViewModel : ViewModel() {
         _stateLiveData.value = MainState.Loading
         kotlin.concurrent.thread {
             val site = "https://instabug.com/"
-            val obj = URL(site)
-            val con = obj.openConnection() as HttpURLConnection
-            con.requestMethod = "GET"
-            val responseCode = con.responseCode
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                val `in` = BufferedReader(
-                    InputStreamReader(
-                        con.inputStream
-                    )
-                )
-                var inputLine: String?
-                val response = StringBuffer()
-                while (`in`.readLine().also { inputLine = it } != null) {
-                    response.append(inputLine)
+            val result = network.request(site)
+            when (result) {
+                null -> _stateLiveData.postValue(MainState.Error())
+                else -> {
+                    val uiResult = parseInput(result)
+                    _stateLiveData.postValue(MainState.Success(uiResult))
                 }
-                `in`.close()
-                _stateLiveData.postValue(MainState.Error(response.toString()))
-
-            } else {
-                _stateLiveData.postValue(MainState.Error())
 
             }
         }
-
-    }
-
-    fun search(input: String) {
-
     }
 }
+
+private fun parseInput(input: String): List<WordCount> {
+    val inputWithoutSpace = input.split(" ")
+    val groupBy = inputWithoutSpace.groupBy { it }
+    val result = groupBy.values.mapNotNull {
+        val pattern: Pattern = Pattern.compile("[^a-zA]")
+        val matcher: Matcher = pattern.matcher(it[0])
+        if (matcher.find() || it[0].isBlank()) {
+            null
+        } else {
+            WordCount(it[0], it.size.toString())
+        }
+    }
+    return result
+}
+
